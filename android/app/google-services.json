@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "223890689183",
+    "project_id": "euphony-btech-3rdyear",
+    "storage_bucket": "euphony-btech-3rdyear.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:223890689183:android:b660f566d7e7ea50bca6aa",
+        "android_client_info": {
+          "package_name": "com.example.musicapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCjQ1OqPP58SqxXj1UTvzJViUuinIDrfac"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
