@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../model/playlistprovider.dart';
 import '../components/neubox.dart';
 import 'homepage.dart';
 
@@ -28,6 +30,11 @@ class TicketConfirmationPage extends StatelessWidget {
         padding: const EdgeInsets.all(25.0),
         child: Column(
           children: [
+            // --- NEW: SUCCESS ANIMATION / ICON ---
+            const Icon(Icons.check_circle, color: Colors.green, size: 60),
+            const SizedBox(height: 10),
+            const Text("Booking Confirmed!",
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             const SizedBox(height: 20),
 
             // THE TICKET CARD
@@ -93,6 +100,33 @@ class TicketConfirmationPage extends StatelessWidget {
                     ),
                   ),
 
+                  // --- NEW: EUPHONY SAVINGS SUMMARY ---
+                  Consumer<PlaylistProvider>(
+                    builder: (context, value, child) => Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 20),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blueAccent.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(Icons.auto_awesome,
+                              color: Colors.blueAccent, size: 16),
+                          const SizedBox(width: 8),
+                          Text(
+                            "You saved ₹${value.discountAmount} with Euphony Coins!",
+                            style: const TextStyle(
+                                color: Colors.blueAccent,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
                   // QR Code Placeholder
                   Container(
                     margin: const EdgeInsets.all(20),
@@ -122,10 +156,11 @@ class TicketConfirmationPage extends StatelessWidget {
             // BACK TO HOME BUTTON
             GestureDetector(
               onTap: () {
+                // Clear the navigation stack and go home
                 Navigator.pushAndRemoveUntil(
                   context,
                   MaterialPageRoute(builder: (context) => const Homepage()),
-                  (route) => false, // Clears the navigation stack
+                  (route) => false,
                 );
               },
               child: NeuBox(

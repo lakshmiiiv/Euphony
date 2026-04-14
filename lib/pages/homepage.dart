@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../model/playlistprovider.dart';
 import 'songpage.dart';
 import '../components/mini_player.dart';
-import '../components/neubox.dart'; // Ensure NeuBox is imported
+import '../components/neubox.dart';
 
 import 'concert_page.dart';
 import 'profile_page.dart';
@@ -17,7 +17,6 @@ class Homepage extends StatefulWidget {
 }
 
 class _HomepageState extends State<Homepage> {
-  // NEW: Controller for the search bar
   final TextEditingController _searchController = TextEditingController();
 
   @override
@@ -45,6 +44,36 @@ class _HomepageState extends State<Homepage> {
         elevation: 0,
         backgroundColor: Colors.transparent,
         centerTitle: true,
+        // NEW: Coin Balance display in the AppBar
+        actions: [
+          Consumer<PlaylistProvider>(
+            builder: (context, value, child) => Padding(
+              padding: const EdgeInsets.only(right: 16.0),
+              child: Center(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.amber.withOpacity(0.5)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.stars, color: Colors.amber, size: 18),
+                      const SizedBox(width: 4),
+                      Text(
+                        "₹${value.userCoins}",
+                        style: const TextStyle(
+                            fontWeight: FontWeight.bold, color: Colors.amber),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
       drawer: Drawer(
         backgroundColor: Theme.of(context).colorScheme.surface,
@@ -97,7 +126,41 @@ class _HomepageState extends State<Homepage> {
         children: [
           Column(
             children: [
-              // --- NEW: SEARCH BAR FEATURE ---
+              // --- NEW: EUPHONY BLUES PROMO BANNER ---
+              Consumer<PlaylistProvider>(
+                builder: (context, value, child) {
+                  if (value.isEuphonyBlues) {
+                    return Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.blueAccent, Colors.blue.shade900],
+                        ),
+                      ),
+                      child: const Column(
+                        children: [
+                          Text(
+                            "💙 EUPHONY BLUES IS LIVE 💙",
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontWeight: FontWeight.bold,
+                                letterSpacing: 1),
+                          ),
+                          Text(
+                            "Earn 5x Coins for every 10 mins of listening!",
+                            style:
+                                TextStyle(color: Colors.white70, fontSize: 10),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
+                  return const SizedBox.shrink();
+                },
+              ),
+
+              // SEARCH BAR
               Padding(
                 padding: const EdgeInsets.all(15.0),
                 child: NeuBox(
@@ -115,8 +178,6 @@ class _HomepageState extends State<Homepage> {
                         Provider.of<PlaylistProvider>(context, listen: false)
                             .searchAndAddFromApi(value);
                         _searchController.clear();
-
-                        // Show a small feedback snackbar
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(content: Text("Searching for '$value'...")),
                         );

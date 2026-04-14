@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart'; // NEW: Added for reward data
 import 'package:musicapp/components/neubox.dart';
 import 'package:musicapp/model/concert.dart';
+import 'package:musicapp/model/playlistprovider.dart'; // NEW: Added for reward logic
 import 'package:musicapp/pages/seat_selection_page.dart';
-import 'package:musicapp/pages/squad_details_page.dart'; // Added this import
+import 'package:musicapp/pages/squad_details_page.dart';
 
 class ConcertDetailsPage extends StatelessWidget {
   final Concert concert;
@@ -65,11 +67,24 @@ class ConcertDetailsPage extends StatelessWidget {
                         fontSize: 28, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 10),
-                  Text(
-                    "${concert.venue} • ${concert.date}",
-                    style: TextStyle(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.w500),
+
+                  // --- NEW FEATURE: VERIFIED BADGE ---
+                  Row(
+                    children: [
+                      Text(
+                        "${concert.venue} • ${concert.date}",
+                        style: TextStyle(
+                            color: Theme.of(context).colorScheme.primary,
+                            fontWeight: FontWeight.w500),
+                      ),
+                      const SizedBox(width: 8),
+                      const Icon(Icons.verified, color: Colors.blue, size: 16),
+                      const Text(" MIT Verified",
+                          style: TextStyle(
+                              color: Colors.blue,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold)),
+                    ],
                   ),
                   const SizedBox(height: 30),
 
@@ -140,7 +155,45 @@ class ConcertDetailsPage extends StatelessWidget {
                       ),
                     ),
                   ),
-                  // -------------------------------------------------------
+
+                  // --- NEW FEATURE: EUPHONY BLUES SAVINGS PREVIEW ---
+                  const SizedBox(height: 25),
+                  Consumer<PlaylistProvider>(
+                    builder: (context, provider, child) => Container(
+                      padding: const EdgeInsets.all(15),
+                      decoration: BoxDecoration(
+                        color: Colors.blueAccent.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: Colors.blueAccent.withOpacity(0.2)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.stars, color: Colors.amber),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text("Euphony Blues Loyalty",
+                                    style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 14)),
+                                Text(
+                                    "Use ₹${provider.userCoins} in coins for this booking",
+                                    style: const TextStyle(
+                                        fontSize: 12, color: Colors.grey)),
+                              ],
+                            ),
+                          ),
+                          Text("-₹${provider.userCoins}",
+                              style: const TextStyle(
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.bold)),
+                        ],
+                      ),
+                    ),
+                  ),
 
                   const SizedBox(height: 30),
                   const Text(
@@ -153,6 +206,7 @@ class ConcertDetailsPage extends StatelessWidget {
                     style: TextStyle(height: 1.5),
                   ),
                   const SizedBox(height: 40),
+
                   GestureDetector(
                     onTap: () {
                       Navigator.push(
@@ -167,13 +221,16 @@ class ConcertDetailsPage extends StatelessWidget {
                       child: Container(
                         padding: const EdgeInsets.all(20),
                         child: Center(
-                          child: Text(
-                            "Select Seats - \$${concert.ticketPrice}",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color:
-                                  Theme.of(context).colorScheme.inversePrimary,
-                              fontSize: 16,
+                          child: Consumer<PlaylistProvider>(
+                            builder: (context, provider, child) => Text(
+                              "Select Seats - ₹${concert.ticketPrice - provider.userCoins}",
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(context)
+                                    .colorScheme
+                                    .inversePrimary,
+                                fontSize: 16,
+                              ),
                             ),
                           ),
                         ),

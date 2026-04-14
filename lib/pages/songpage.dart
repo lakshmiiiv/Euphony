@@ -1,3 +1,4 @@
+import 'dart:async'; // NEW: Required for the reward timer
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -17,6 +18,9 @@ class _SongpageState extends State<Songpage> {
   Duration duration = Duration.zero;
   Duration position = Duration.zero;
 
+  // NEW: Timer to track listening seconds for rewards
+  Timer? _rewardTimer;
+
   @override
   void initState() {
     super.initState();
@@ -26,6 +30,13 @@ class _SongpageState extends State<Songpage> {
     _audioPlayer.onPlayerStateChanged.listen((state) {
       if (mounted) {
         setState(() => isPlaying = state == PlayerState.playing);
+
+        // REWARD FEATURE: Start or stop timer based on playback
+        if (isPlaying) {
+          _startRewardTimer();
+        } else {
+          _rewardTimer?.cancel();
+        }
       }
     });
 
@@ -41,6 +52,18 @@ class _SongpageState extends State<Songpage> {
 
     // Start playing as soon as we land on the page
     _playCurrentSong();
+  }
+
+  // NEW: Reward Timer Logic
+  void _startRewardTimer() {
+    _rewardTimer?.cancel(); // Clear any existing timer
+    _rewardTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (isPlaying) {
+        // Update the provider every second
+        Provider.of<PlaylistProvider>(context, listen: false)
+            .updateListeningTime(1);
+      }
+    });
   }
 
   // UPDATED: Added better error handling for the stream
@@ -60,6 +83,7 @@ class _SongpageState extends State<Songpage> {
 
   @override
   void dispose() {
+    _rewardTimer?.cancel(); // NEW: Clean up timer to prevent memory leaks
     _audioPlayer.dispose();
     super.dispose();
   }
@@ -91,24 +115,56 @@ class _SongpageState extends State<Songpage> {
                       ),
                       const Text("P L A Y I N G",
                           style: TextStyle(letterSpacing: 2)),
-                      const Icon(Icons.menu),
+
+                      // REWARD UI: Shows current coin balance in AppBar
+                      Row(
+                        children: [
+                          const Icon(Icons.stars,
+                              color: Colors.amber, size: 20),
+                          const SizedBox(width: 4),
+                          Text(
+                            "₹${value.userCoins}",
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                   const SizedBox(height: 25),
 
-                  // Album Art - UPDATED TO USE NETWORK PROPERLY
+                  // Euphony Blues Active Banner
+                  if (value.isEuphonyBlues)
+                    Container(
+                      margin: const EdgeInsets.only(bottom: 20),
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.blueAccent.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.blueAccent),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          "💙 EUPHONY BLUES: 5X COINS ACTIVE",
+                          style: TextStyle(
+                            color: Colors.blueAccent,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Album Art
                   NeuBox(
                     child: Column(
                       children: [
                         ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: Image.network(
-                            currentSong
-                                .albumArtPath, // Uses our dynamic URL from Provider
+                            currentSong.albumArtPath,
                             height: 300,
                             width: double.infinity,
                             fit: BoxFit.cover,
-                            // Added loading indicator
                             loadingBuilder: (context, child, progress) {
                               if (progress == null) return child;
                               return Container(
@@ -191,11 +247,9 @@ class _SongpageState extends State<Songpage> {
                   // Playback Controls
                   Row(
                     children: [
-                      // Previous Logic
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
-                            // Loop to previous or just logic check
                             if (value.currentSongIndex! > 0) {
                               value.currentSongIndex =
                                   value.currentSongIndex! - 1;
@@ -206,8 +260,6 @@ class _SongpageState extends State<Songpage> {
                         ),
                       ),
                       const SizedBox(width: 20),
-
-                      // Play/Pause
                       Expanded(
                         flex: 2,
                         child: GestureDetector(
@@ -225,12 +277,10 @@ class _SongpageState extends State<Songpage> {
                         ),
                       ),
                       const SizedBox(width: 20),
-
-                      // ML Next Logic
                       Expanded(
                         child: GestureDetector(
                           onTap: () {
-                            value.playNextByMood(); // MATHEMATICAL JUMP
+                            value.playNextByMood();
                             _playCurrentSong();
                           },
                           child: const NeuBox(child: Icon(Icons.skip_next)),
