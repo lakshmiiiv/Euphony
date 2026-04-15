@@ -1,3 +1,4 @@
+import 'dart:async'; // NEW: Required for the Reward Timer
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
@@ -8,15 +9,17 @@ import '../services/api_service.dart';
 class PlaylistProvider extends ChangeNotifier {
   List<Song> _playlist = [];
   int? _currentSongIndex;
+  bool _isPlaying = false;
 
   // --- REWARD & SQUAD SYSTEM VARIABLES ---
   int _userCoins = 0;
   int _totalSecondsPlayed = 0;
+  Timer? _rewardTimer; // NEW: Global Timer for Reward Tracking
 
   // NEW SQUAD TWEAKS:
-  bool _isProfilePrivate = false; // Loophole fix: Privacy Toggle
-  String _userCollegeDomain = "@mit.edu.in"; // Loophole fix: Verification
-  int _maxSquadSize = 6; // Loophole fix: Scalability
+  bool _isProfilePrivate = false;
+  String _userCollegeDomain = "@mit.edu.in";
+  int _maxSquadSize = 6;
 
   // --- QUICK ATTENDEE VARIABLES ---
   Map<String, dynamic>? _quickAttendeeData;
@@ -24,20 +27,86 @@ class PlaylistProvider extends ChangeNotifier {
 
   final ApiService _apiService = ApiService();
 
+  // Getters
   List<Song> get playlist => _playlist;
   int? get currentSongIndex => _currentSongIndex;
   int get userCoins => _userCoins;
+  bool get isPlaying => _isPlaying;
   bool get isEuphonyBlues => DateTime.now().weekday == DateTime.friday;
-
-  // Getters for Squad Tweaks
   bool get isProfilePrivate => _isProfilePrivate;
   int get maxSquadSize => _maxSquadSize;
+
+  // --- NEW: TIMER CONTROL LOGIC ---
+  // Call this in your SongPage when play is pressed
+  void startRewardTimer() {
+    _rewardTimer?.cancel(); // Safety reset
+    _rewardTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_isPlaying) {
+        updateListeningTime(1);
+      }
+    });
+  }
+
+  void stopRewardTimer() {
+    _rewardTimer?.cancel();
+  }
+
+  // --- REWARD SYSTEM LOGIC (EXPANDED) ---
+  void updateListeningTime(int seconds) {
+    _totalSecondsPlayed += seconds;
+
+    // Logic: Every 10 seconds = Reward
+    if (_totalSecondsPlayed >= 10) {
+      int multiplier = isEuphonyBlues ? 5 : 1;
+      _userCoins += multiplier;
+      _totalSecondsPlayed = 0;
+
+      // PERSISTENCE LOGIC: For the research paper, we call this "Atomic Cloud Updates"
+      // syncCoinsWithFirebase();
+
+      notifyListeners();
+    }
+  }
+
+  /* set isPlaying(bool value) {
+    _isPlaying = value;
+    if (_isPlaying) {
+      startRewardTimer();
+    } else {
+      stopRewardTimer();
+    }
+    notifyListeners();
+  }*/
+
+  set isPlaying(bool value) {
+    _isPlaying = value;
+
+    // SAFETY: Kill any existing timer so they don't stack up
+    _rewardTimer?.cancel();
+
+    if (_isPlaying) {
+      print("DEBUG: Music Playing - Timer Started");
+      _rewardTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+        // Only update if the music is still actually playing
+        if (_isPlaying) {
+          updateListeningTime(1);
+          // Check your VS Code Debug Console for this print!
+          print("DEBUG: Seconds: $_totalSecondsPlayed | Coins: $_userCoins");
+        } else {
+          timer.cancel();
+        }
+      });
+    } else {
+      print("DEBUG: Music Paused - Timer Stopped");
+    }
+
+    notifyListeners();
+  }
 
   // --- QUICK ATTENDEE LOGIC ---
   Future<void> fetchQuickAttendee(String username) async {
     try {
       print("QUICK ATTENDEE: Searching for $username...");
-      // Using your established Realtime Database instance
       final ref = FirebaseDatabase.instanceFor(
         app: Firebase.app(),
         databaseURL:
@@ -48,10 +117,9 @@ class PlaylistProvider extends ChangeNotifier {
 
       if (snapshot.exists) {
         _quickAttendeeData = Map<String, dynamic>.from(snapshot.value as Map);
-        print("QUICK ATTENDEE: Found ${ _quickAttendeeData!['fullName']}");
+        print("QUICK ATTENDEE: Found ${_quickAttendeeData!['fullName']}");
       } else {
         _quickAttendeeData = null;
-        print("QUICK ATTENDEE: No user found with username $username");
       }
       notifyListeners();
     } catch (e) {
@@ -61,7 +129,6 @@ class PlaylistProvider extends ChangeNotifier {
     }
   }
 
-  // Helper to clear attendee data after booking is done
   void clearQuickAttendee() {
     _quickAttendeeData = null;
     notifyListeners();
@@ -71,24 +138,11 @@ class PlaylistProvider extends ChangeNotifier {
   void togglePrivacy(bool value) {
     _isProfilePrivate = value;
     notifyListeners();
-    print(
-        "PRIVACY: User is now ${_isProfilePrivate ? 'Hidden' : 'Visible'} in Squads");
-  }
-
-  // --- REWARD SYSTEM LOGIC ---
-  void updateListeningTime(int seconds) {
-    _totalSecondsPlayed += seconds;
-    if (_totalSecondsPlayed >= 600) {
-      int multiplier = isEuphonyBlues ? 5 : 1;
-      _userCoins += multiplier;
-      _totalSecondsPlayed = 0;
-      notifyListeners();
-    }
   }
 
   double get discountAmount => _userCoins.toDouble();
 
-  // --- 1. FIREBASE FETCH (Intact) ---
+  // --- FIREBASE FETCH ---
   Future<void> fetchSongsFromFirebase() async {
     try {
       final ref = FirebaseDatabase.instanceFor(
@@ -123,7 +177,7 @@ class PlaylistProvider extends ChangeNotifier {
     }
   }
 
-  // --- 2. API SEARCH (Intact) ---
+  // --- API SEARCH ---
   Future<void> searchAndAddFromApi(String query) async {
     List<Song> apiSongs = await _apiService.fetchSongs(query);
     if (apiSongs.isNotEmpty) {
@@ -132,7 +186,7 @@ class PlaylistProvider extends ChangeNotifier {
     }
   }
 
-  // --- 3. THE ML LOGIC (Intact) ---
+  // --- ML MOOD LOGIC ---
   void playNextByMood() {
     if (_currentSongIndex == null || _playlist.isEmpty) return;
     Song current = _playlist[_currentSongIndex!];
@@ -158,5 +212,11 @@ class PlaylistProvider extends ChangeNotifier {
   set currentSongIndex(int? newIndex) {
     _currentSongIndex = newIndex;
     notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _rewardTimer?.cancel(); // Prevent memory leaks
+    super.dispose();
   }
 }

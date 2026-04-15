@@ -20,6 +20,13 @@ class _SongpageState extends State<Songpage> {
 
   // NEW: Timer to track listening seconds for rewards
   Timer? _rewardTimer;
+  // Inside your PlaylistProvider
+
+
+
+void stopTimer() {
+  _rewardTimer?.cancel();
+}
 
   @override
   void initState() {
